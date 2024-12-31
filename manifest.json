@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Web to Monday.com Sync",
+  "version": "1.0",
+  "permissions": ["activeTab", "scripting", "storage", "background"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["https://*.monday.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  }
+}
