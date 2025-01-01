@@ -6,7 +6,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const query = `
       mutation {
         create_item (
-          board_id: your_board_id,
+          board_id: 876363281,
           group_id: "topics",
           item_name: "New Web Event",
           column_values: "{ \\"text_column\\": \\"${message.data.text}\\", \\"url_column\\": \\"${message.data.url}\\" }"
