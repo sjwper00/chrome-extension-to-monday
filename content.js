@@ -6,6 +6,7 @@ function sendToMonday(orderNumber, companyName) {
   const query = `mutation {
     create_item(
       board_id: ${BOARD_ID},
+      group_id: "${groupId}",  // group_id 추가
       item_name: "${orderNumber}",
       column_values: "{\"업체명\": \"${companyName}\"}"
     ) {
@@ -48,3 +49,26 @@ const targetNode = document.querySelector("#order-container"); // 주문서가 �
 if (targetNode) {
   observer.observe(targetNode, { childList: true, subtree: true });
 }
+
+// 폼 제출 시 이벤트 감지
+document.addEventListener('submit', function(event) {
+  if (event.target && event.target.id === "order-form") {
+    // 주문서 제출 시, 이벤트 발생
+    const orderNumber = event.target.querySelector("#textfield-3148-inputWrap").value; // 얼마에요에서 주문번호에 대한 id element
+    const companyName = event.target.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ").value; // 얼마에요에서 거래처명에 대한 class element
+    const dueDate = event.target.querySelector(".x-form-field x-form-text x-form-text-default  ").value; //얼마에요에서 납기일에 대한 class element
+
+    // 받은 데이터를 백그라운드 스크립트로 전달
+    chrome.runtime.sendMessage({
+      type: "web_event",
+      data: {
+        orderNumber,
+        companyName,
+        dueDate,
+      }
+    });
+
+    // 위의 데이터를 사용하여 Monday.com에 아이템을 생성
+    sendToMonday(orderNumber, companyName, dueDate);
+  }
+});
