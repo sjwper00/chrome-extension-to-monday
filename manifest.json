@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Web to Monday.com Sync",
+  "name": "얼마에요 4.0 - Monday.com 연동",
   "version": "1.0",
-  "permissions": ["activeTab", "scripting", "storage", "background"],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "description": "얼마에요 주문서를 감지하여 Monday.com Weekly Board에 자동으로 아이템 생성",
+  "permissions": ["activeTab", "scripting"],
   "host_permissions": ["https://*.monday.com/*"],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icon.png"
-  }
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"], 
+      "js": ["content.js"]
+    }
+  ]
 }
