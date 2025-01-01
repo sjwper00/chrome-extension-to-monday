@@ -1,6 +1,6 @@
 const API_URL = "https://api.monday.com/v2";
 const API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw"; // Monday.com에서 발급받은 API 키를 입력하세요.
-const BOARD_ID = "Weekly Team Tasks"; // Weekly Board ID를 입력하세요.
+const BOARD_ID = "876363281"; // Weekly Board ID를 입력하세요.
 
 function sendToMonday(orderNumber, companyName) {
   const query = `mutation {
