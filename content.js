@@ -9,8 +9,8 @@ function sendToMonday(orderNumber, companyName) {
       group_id: "${groupId}",  // group_id 추가
       item_name: "${orderNumber}",
       column_values: "${JSON.stringify({
-        업체명: companyName,
-        납기일자: { date: dueDate },
+        text: companyName, // 업체명
+        due_date: { date: dueDate }, //날짜 값
       }).replace(/"/g, '\\"')}"
     ) {
       id
