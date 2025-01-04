@@ -8,7 +8,10 @@ function sendToMonday(orderNumber, companyName) {
       board_id: ${BOARD_ID},
       group_id: "${groupId}",  // group_id 추가
       item_name: "${orderNumber}",
-      column_values: "{\"업체명\": \"${companyName}\"}"
+      column_values: "${JSON.stringify({
+        업체명: companyName,
+        납기일자: { date: dueDate },
+      }).replace(/"/g, '\\"')}"
     ) {
       id
     }
@@ -37,8 +40,9 @@ const observer = new MutationObserver((mutations) => {
     if (mutation.addedNodes.length > 0) {
       const newOrder = document.querySelector(".order-details"); // 주문서의 DOM 구조에 맞게 수정
       if (newOrder) {
-        const orderNumber = newOrder.querySelector(".order-number").textContent.trim(); // 주문번호 클래스
-        const companyName = newOrder.querySelector(".company-name").textContent.trim(); // 거래처명 클래스
+        const orderNumber = newOrder.querySelector(".x-form-field x-form-text x-form-text-default  ").value.trim(); // 주문번호 클래스 -> 얼마에요에서 주문번호에 대한 id element
+        const companyName = newOrder.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ").value.trim(); // 거래처명 클래스 -> 얼마에요에서 거래처명에 대한 class element
+        const dueDate = newOrder.querySelector("..x-form-field x-form-text x-form-text-default  ").value.trim(); // 얼마에요에서 납기일에 대한 class element
         sendToMonday(orderNumber, companyName);
       }
     }
@@ -51,24 +55,31 @@ if (targetNode) {
 }
 
 // 폼 제출 시 이벤트 감지
-document.addEventListener('submit', function(event) {
+document.addEventListener("submit", function (event) {
   if (event.target && event.target.id === "order-form") {
-    // 주문서 제출 시, 이벤트 발생
-    const orderNumber = event.target.querySelector("#textfield-3148-inputWrap").value; // 얼마에요에서 주문번호에 대한 id element
-    const companyName = event.target.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ").value; // 얼마에요에서 거래처명에 대한 class element
-    const dueDate = event.target.querySelector(".x-form-field x-form-text x-form-text-default  ").value; //얼마에요에서 납기일에 대한 class element
+    event.preventDefault(); // 폼 기본 동작 방지 (페이지가 닫히지 않도록 처리)
 
-    // 받은 데이터를 백그라운드 스크립트로 전달
-    chrome.runtime.sendMessage({
-      type: "web_event",
-      data: {
-        orderNumber,
-        companyName,
-        dueDate,
+    setTimeout(() => {
+      const orderNumber = event.target.querySelector(".x-form-field.x-form-text.x-form-text-default")?.value?.trim(); // 주문번호 클래스
+      const companyName = event.target.querySelector(".x-form-field.x-form-required-field.x-form-text.x-form-text-default")?.value?.trim(); // 업체명 클래스
+      const dueDate = event.target.querySelector(".x-form-field.x-form-text.x-form-text-default")?.value?.trim(); // 납기일 클래스
+
+      if (orderNumber && companyName && dueDate) {
+        // 받은 데이터를 백그라운드 스크립트로 전달
+        chrome.runtime.sendMessage({
+          type: "web_event",
+          data: {
+            orderNumber,
+            companyName,
+            dueDate,
+          },
+        });
+
+        // Monday.com에 아이템 생성
+        sendToMonday(orderNumber, companyName, dueDate);
+      } else {
+        console.warn("폼 데이터를 가져오지 못했습니다.");
       }
-    });
-
-    // 위의 데이터를 사용하여 Monday.com에 아이템을 생성
-    sendToMonday(orderNumber, companyName, dueDate);
+    }, 50); // 50ms 지연 추가
   }
 });
