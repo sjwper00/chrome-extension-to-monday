@@ -7,7 +7,7 @@
   "host_permissions": ["https://*.monday.com/*", "https://ebook.iquest.co.kr/ehmMain.do/*"],
   "content_scripts": [
     {
-      "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"] 
+      "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"], 
       "js": ["content.js"]
     }
   ]
