@@ -14,9 +14,9 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "icons8-synchronize-16.png",
-      "48": "icons8-synchronize-48.png",
-      "128": "icons8-synchronize-128.png"
+      "16": "icons/icons8-synchronize-16.png",
+      "48": "icons/icons8-synchronize-48.png",
+      "128": "icons/icons8-synchronize-128.png"
     }
   }
 }
