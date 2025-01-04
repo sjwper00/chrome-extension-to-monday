@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "얼마에요 4.0 - Monday.com 연동",
-  "version": "1.0",
+  "name": "얼마에요-Monday.com 연동",
+  "version": "1.0.0",
   "description": "얼마에요 주문서를 감지하여 Monday.com Weekly Board에 자동으로 아이템 생성",
   "permissions": ["activeTab", "scripting", "storage"], 
   "host_permissions": ["https://*.monday.com/*", "https://ebook.iquest.co.kr/ehmMain.do/*"],
