@@ -4,10 +4,10 @@
   "version": "1.0",
   "description": "얼마에요 주문서를 감지하여 Monday.com Weekly Board에 자동으로 아이템 생성",
   "permissions": ["activeTab", "scripting", "storage"], 
-  "host_permissions": ["https://*.monday.com/*", "https://https://ebook.iquest.co.kr/ehmMain.do/*"],
+  "host_permissions": ["https://*.monday.com/*", "https://ebook.iquest.co.kr/ehmMain.do/*"],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"], 
+      "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"] 
       "js": ["content.js"]
     }
   ]
