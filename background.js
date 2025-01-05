@@ -56,15 +56,23 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
     `;
 
     // Monday.com API 호출
-    fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({ query }),
-    })
-      .then((response) => response.json())
-      .then((data) => console.log("Data sent to Monday.com:", data))
-      .catch((error) => console.error("Error sending data to Monday.com:", error));
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP 오류: ${response.status}`);
   }
+
+  const data = await response.json();
+  if (data.errors) {
+    throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
+  }
+
+  return data;
+}
