@@ -68,4 +68,3 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
       .then((data) => console.log("Data sent to Monday.com:", data))
       .catch((error) => console.error("Error sending data to Monday.com:", error));
   }
-;
