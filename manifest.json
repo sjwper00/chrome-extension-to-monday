@@ -9,7 +9,7 @@
     "service_worker": "background.js"},
   "content_scripts": [
     {
-      "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"], 
+      "matches": ["https://ebook.iquest.co.kr/*"], 
       "js": ["content.js"]
     }
   ],
