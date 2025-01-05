@@ -18,5 +18,8 @@
       "48": "icons/icons8-synchronize-48.png",
       "128": "icons/icons8-synchronize-128.png"
     }
+  },
+  "background": {
+  "service_worker": "background.js"
   }
 }
