@@ -28,6 +28,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 비동기 응답을 사용하기 위해 true 반환
     return true;
+  } else if (message.type === "start_sync") {
+    console.log("start_sync 메시지 수신");
+
+    // 여기에 start_sync에 맞는 로직 추가
+    // 현재는 단순 테스트용 메시지 응답
+    sendResponse({ status: "success", message: "start_sync 메시지 처리 완료" });
   } else {
     console.warn("알 수 없는 메시지 타입:", message.type);
     sendResponse({ status: "error", message: "알 수 없는 메시지 타입입니다." });
@@ -39,18 +45,20 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
   console.log("Monday.com 동기화 작업 실행 중...");
   
     // Monday.com API로 보내는 GraphQL 쿼리 작성
+  // 주문번호를 item_name으로 사용
+  // 아이템 생성 후 ID 반환
     const query = `
       mutation {
         create_item(
-          board_id: 876363281,  // 게시판 ID
-          group_id: "topics",  // 그룹 ID (예: "topics")
-          item_name: "${orderNumber}",  // 주문번호를 item_name으로 사용
+          board_id: 876363281,  
+          group_id: "topics",  
+          item_name: "${orderNumber}",  
           column_values: "${JSON.stringify({
             text: companyName,  // 업체명
             due_date: { date: dueDate },  // 납기일자 (날짜 형식)
           }).replace(/"/g, '\\"')}"  // JSON을 문자열로 처리
         ) {
-          id  // 아이템 생성 후 ID 반환
+          id  
         }
       }
     `;
