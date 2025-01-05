@@ -6,7 +6,7 @@
   "permissions": ["activeTab", "scripting", "storage"], 
   "host_permissions": ["https://*.monday.com/*", "https://ebook.iquest.co.kr/ehmMain.do/*"],
   "background": {
-    "service_worker": "background.js"}
+    "service_worker": "background.js"},
   "content_scripts": [
     {
       "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"], 
