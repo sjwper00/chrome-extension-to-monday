@@ -56,14 +56,15 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
           column_values: "${JSON.stringify({
             text: companyName,  // 업체명
             due_date: { date: dueDate },  // 납기일자 (날짜 형식)
-          }).replace(/"/g, '\\"')}"  // JSON을 문자열로 처리
+          }).replace(/"/g, '\\"')}"  
         ) {
           id  
         }
       }
-    `;
+    `;// JSON을 문자열로 처리
 
     // Monday.com API 호출
+  try{
   const response = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -72,15 +73,24 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
     },
     body: JSON.stringify({ query }),
   });
-
-  if (!response.ok) {
-    throw new Error(`HTTP 오류: ${response.status}`);
-  }
+// *HTTP 상태 코드 검사 추가**
+  if (!response.ok) { //  변경된 부분: HTTP 오류 확인 로직
+  console.error(`HTTP 오류: ${response.status}`);
+  throw new Error(`HTTP 오류: ${response.status}`);
+}
 
   const data = await response.json();
-  if (data.errors) {
+    
+    //GraphQL 응답 검사 추가
+  if (data.errors) { //GraphQL 응답 오류 확인
+    console.error("GraphQL 오류:", data.errors);
     throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
   }
 
-  return data;
+    console.log("동기화 성공:", data); // 성공 로그 추가
+    return data;   
+  } catch(error){
+    console.error("동기화 중 오류 발생:",error); // 에러 처리 추가
+    throw error;//에러 재전달
+  }
 }
