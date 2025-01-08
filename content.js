@@ -44,7 +44,7 @@ const observer = new MutationObserver((mutations) => {
         const orderNumber = newOrder.querySelector(".x-form-field x-form-text x-form-text-default  ").value.trim(); // 주문번호 클래스 -> 얼마에요에서 주문번호에 대한 id element
         const companyName = newOrder.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ").value.trim(); // 거래처명 클래스 -> 얼마에요에서 거래처명에 대한 class element
         const dueDate = newOrder.querySelector("..x-form-field x-form-text x-form-text-default  ").value.trim(); // 얼마에요에서 납기일에 대한 class element
-        sendToMonday(orderNumber, companyName);
+        sendToMonday(orderNumber, companyName, dueDate);
       }
     }
   });
