@@ -3,7 +3,7 @@ const API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIj
 const BOARD_ID = "876363281"; // Weekly Board ID
 const groupId = "new_group85406"// 자신의 '발주접수' Group ID
 
-function sendToMonday(orderNumber, companyName) {
+function sendToMonday(orderNumber, companyName, dueDate) {
   const query = `mutation {
     create_item(
       board_id: ${BOARD_ID},
