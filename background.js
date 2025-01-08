@@ -51,7 +51,7 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
       mutation {
         create_item(
           board_id: 876363281,  
-          group_id: "topics",  
+          group_id: "new_group85406",  
           item_name: "${orderNumber}",  
           column_values: "${JSON.stringify({
             text: companyName,  // 업체명
