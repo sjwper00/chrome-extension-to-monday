@@ -56,12 +56,13 @@ if (targetNode) {
 }
 
 // 폼 제출 시 이벤트 감지
-document.addEventListener("submit", function (event) {
-  // 이벤트 대상이 "order-form"인지 확인
-  if (event.target && event.target.id === "widget_button_save-2422-btnInnerEl") { //저장 버튼 트리거 id
-    event.preventDefault(); // 폼 기본 동작 방지 (페이지가 닫히지 않도록 처리)
-
-    // 비동기 작업 처리
+// "얼마에요 주문서 저장 버튼" 감지
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (target && target.id === "widget_button_save-2422-btnInnerEl") {
+    console.log("주문서 저장 버튼 클릭 감지!");
+    handleOrderSave();
+        // 비동기 작업 처리
     setTimeout(() => {
       // 폼 필드 선택
       const orderNumberField = event.target.querySelector(".x-form-field.x-form-text.x-form-text-default");
@@ -97,7 +98,7 @@ document.addEventListener("submit", function (event) {
 
       // Monday.com에 아이템 생성
       sendToMonday(orderNumber, companyName, dueDate);
-    }, 50); // 50ms 지연 추가
+    }, 100); // 100ms 지연 추가
   }
 });
 
