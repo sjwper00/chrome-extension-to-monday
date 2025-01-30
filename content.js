@@ -35,22 +35,34 @@ function sendToMonday(orderNumber, companyName, dueDate) {
     });
 }
 
+// ➖ 메시지 수신 핸들러 추가 ➖
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "get_order_data") {
+    const orderNumber = document.querySelector(".order-number")?.value?.trim() || "알 수 없음";
+    const companyName = document.querySelector(".company-name")?.value?.trim() || "알 수 없음";
+    const dueDate = document.querySelector(".due-date")?.value?.trim() || "알 수 없음";
+
+    sendResponse({ data: { orderNumber, companyName, dueDate } });
+  }
+  return true; // 비동기 응답을 위해 true 반환
+});
+
 // 주문서 생성 감지
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.addedNodes.length > 0) {
       const newOrder = document.querySelector(".order-details"); // 주문서의 DOM 구조에 맞게 수정
       if (newOrder) {
-        const orderNumber = **newOrder.querySelector(".order-number").value.trim();** // 주문번호 클래스 (수정)
-        const companyName = **newOrder.querySelector(".company-name").value.trim();** // 거래처명 클래스 (수정)
-        const dueDate = **newOrder.querySelector(".due-date").value.trim();** // 납기일자 클래스 (수정)
+        const orderNumber = newOrder.querySelector(".order-number")?.value?.trim();
+        const companyName = newOrder.querySelector(".company-name")?.value?.trim();
+        const dueDate = newOrder.querySelector(".due-date")?.value?.trim();
         sendToMonday(orderNumber, companyName, dueDate);
       }
     }
   });
 });
 
-const targetNode = **document.querySelector("#order-container");** // 주문서 추가 컨테이너 ID (수정)
+const targetNode = document.querySelector("#order-container"); // 주문서 추가 컨테이너 ID
 if (targetNode) {
   observer.observe(targetNode, { childList: true, subtree: true });
 }
@@ -63,9 +75,9 @@ document.addEventListener("click", (event) => {
 
     // 비동기 작업 처리
     setTimeout(() => {
-      const orderNumberField = **document.querySelector(".order-number");** // 주문번호 필드 클래스 (수정)
-      const companyNameField = **document.querySelector(".company-name");** // 거래처명 필드 클래스 (수정)
-      const dueDateField = **document.querySelector(".due-date");** // 납기일자 필드 클래스 (수정)
+      const orderNumberField = document.querySelector(".order-number");
+      const companyNameField = document.querySelector(".company-name");
+      const dueDateField = document.querySelector(".due-date");
 
       const orderNumber = orderNumberField?.value?.trim() || null;
       const companyName = companyNameField?.value?.trim() || null;
