@@ -38,7 +38,7 @@ function sendToMonday(orderNumber, companyName, dueDate) {
 // ➖ 메시지 수신 핸들러 추가 ➖
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "get_order_data") {
-    const orderNumber = document.querySelector(".order-number")?.value?.trim() || "알 수 없음";
+    const orderNumber = document.querySelector("#textfield-1708-inputEl")?.value?.trim() || "알 수 없음";
     const companyName = document.querySelector(".company-name")?.value?.trim() || "알 수 없음";
     const dueDate = document.querySelector(".due-date")?.value?.trim() || "알 수 없음";
 
@@ -53,9 +53,9 @@ const observer = new MutationObserver((mutations) => {
     if (mutation.addedNodes.length > 0) {
       const newOrder = document.querySelector(".order-details"); // 주문서의 DOM 구조에 맞게 수정
       if (newOrder) {
-        const orderNumber = newOrder.querySelector(".order-number")?.value?.trim();
-        const companyName = newOrder.querySelector(".company-name")?.value?.trim();
-        const dueDate = newOrder.querySelector(".due-date")?.value?.trim();
+        const orderNumber = newOrder.querySelector(".x-form-text-wrap x-form-text-wrap-default")?.value?.trim();
+        const companyName = newOrder.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ")?.value?.trim();
+        const dueDate = newOrder.querySelector(".x-form-field x-form-text x-form-text-default  ")?.value?.trim();
         sendToMonday(orderNumber, companyName, dueDate);
       }
     }
@@ -75,9 +75,9 @@ document.addEventListener("click", (event) => {
 
     // 비동기 작업 처리
     setTimeout(() => {
-      const orderNumberField = document.querySelector(".order-number");
-      const companyNameField = document.querySelector(".company-name");
-      const dueDateField = document.querySelector(".due-date");
+      const orderNumberField = document.querySelector(".x-form-text-wrap x-form-text-wrap-default");
+      const companyNameField = document.querySelector(".x-form-field x-form-required-field x-form-text x-form-text-default ");
+      const dueDateField = document.querySelector(".x-form-field x-form-text x-form-text-default  ");
 
       const orderNumber = orderNumberField?.value?.trim() || null;
       const companyName = companyNameField?.value?.trim() || null;
