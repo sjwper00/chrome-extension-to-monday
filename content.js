@@ -66,7 +66,7 @@ const targetNode = document.querySelector("#order-container"); // 주문서 추�
 if (targetNode) {
   observer.observe(targetNode, { childList: true, subtree: true });
 }
-/*
+
 // 폼 제출 시 이벤트 감지
 document.addEventListener("click", (event) => {
   const target = event.target;
@@ -107,4 +107,4 @@ document.addEventListener("click", (event) => {
     }, 100);
   }
 });
-*/
+
