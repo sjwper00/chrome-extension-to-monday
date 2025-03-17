@@ -38,13 +38,53 @@ function sendToMonday(orderNumber, companyName, dueDate) {
 // ➖ 메시지 수신 핸들러 추가 ➖
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "get_order_data") {
-    const orderNumber = document.querySelector("[id^='textfield-'][id$='-inputEl']")?.value?.trim() || "알 수 없음";
-    const companyName = document.querySelector("[id^='common_Popup_TextField-'][id$='-inputEl']")?.value?.trim() || "알 수 없음";
-    const dueDate = document.querySelector("[id^='datefield-'][id$='-inputEl']")?.value?.trim() || "알 수 없음";
+    // 활성화된 주문서 컨테이너 찾기
+    const orderContainers = document.querySelectorAll(".x-window.x-window-default");
+    let activeContainer = null;
 
+    // z-index가 가장 높은 컨테이너를 활성화된 주문서로 간주
+    let maxZIndex = -1;
+    for (const container of orderContainers) {
+      const zIndex = parseInt(container.style.zIndex || "0", 10);
+      if (zIndex > maxZIndex && container.style.display !== "none") {
+        maxZIndex = zIndex;
+        activeContainer = container;
+      }
+    }
+
+    // 활성화된 컨테이너가 없으면 첫 번째 컨테이너 사용
+    activeContainer = activeContainer || orderContainers[0];
+
+    if (!activeContainer) {
+      console.error("주문서 컨테이너를 찾을 수 없습니다.");
+      sendResponse({ data: { orderNumber: "알 수 없음", companyName: "알 수 없음", dueDate: "알 수 없음" } });
+      return true;
+    }
+
+    // 필드 선택
+    const textfieldEls = activeContainer.querySelectorAll("[id^='textfield-'][id$='-inputEl']");
+    const companyNameEls = activeContainer.querySelectorAll("[id^='common_Popup_TextField-'][id$='-inputEl']");
+    const dueDateEls = activeContainer.querySelectorAll("[id^='datefield-'][id$='-inputEl']");
+
+    // 각 필드의 목표 인덱스에서 값 가져오기
+    const orderNumber = textfieldEls[0]?.value?.trim() || "알 수 없음"; // 주문 번호: 첫 번째 textfield
+    const companyName = companyNameEls[1]?.value?.trim() || "알 수 없음"; // 업체 이름: 두 번째 common_Popup_TextField
+    let dueDate = dueDateEls[1]?.value?.trim() || "알 수 없음"; // 납기일: 두 번째 datefield
+
+    // 날짜 형식 변환
+    if (dueDate !== "알 수 없음") {
+      const parsedDate = new Date(dueDate);
+      dueDate = isNaN(parsedDate) ? "알 수 없음" : parsedDate.toISOString().split("T")[0];
+    }
+
+    console.log("활성 컨테이너 ID:", activeContainer.id);
+    console.log("textfield 개수:", textfieldEls.length);
+    console.log("companyName 필드 개수:", companyNameEls.length);
+    console.log("dueDate 필드 개수:", dueDateEls.length);
+    console.log("수집된 데이터:", { orderNumber, companyName, dueDate });
     sendResponse({ data: { orderNumber, companyName, dueDate } });
   }
-  return true; // 비동기 응답을 위해 true 반환
+  return true;
 });
 
 // 주문서 생성 감지
