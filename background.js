@@ -57,11 +57,8 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
           board_id: 876363281,  
           group_id: "new_group85406",  
           item_name: "${orderNumber}",  
-          column_values: "${JSON.stringify({
-            text: companyName,  // 업체명
-            due_date: { date: dueDate },  // 납기일자 (날짜 형식)
-          }).replace(/"/g, '\\"')}"  
-        ) {
+          column_values: "${JSON.stringify(JSON.stringify(columnValues))}
+          ){
           id  
         }
       }
