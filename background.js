@@ -57,7 +57,7 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
           board_id: 876363281,  
           group_id: "new_group85406",  
           item_name: "${orderNumber}",  
-          column_values: "${JSON.stringify(JSON.stringify(columnValues))}
+          column_values: "${JSON.stringify(JSON.stringify(columnValues))}"
           ){
           id  
         }
