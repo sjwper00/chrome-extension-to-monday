@@ -43,7 +43,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // 동기화 작업 함수
 async function syncWithMonday(orderNumber, companyName, dueDate) {
   console.log("Monday.com 동기화 작업 실행 중...");
-  
+
+  const columnValues = {
+    "text9": companyName,         // companyName -> text9 컬럼
+    "date": { "date": dueDate }   // dueDate -> date 컬럼
+  };
     // Monday.com API로 보내는 GraphQL 쿼리 작성
   // 주문번호를 item_name으로 사용
   // 아이템 생성 후 ID 반환
