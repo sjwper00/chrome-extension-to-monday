@@ -28,15 +28,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 비동기 응답을 사용하기 위해 true 반환
     return true;
-  } else if (message.type === "start_sync") {
-    console.log("start_sync 메시지 수신");
-
-    // 여기에 start_sync에 맞는 로직 추가
-    // 현재는 단순 테스트용 메시지 응답
-    sendResponse({ status: "success", message: "start_sync 메시지 처리 완료" });
-  } else {
-    console.warn("알 수 없는 메시지 타입:", message.type);
-    sendResponse({ status: "error", message: "알 수 없는 메시지 타입입니다." });
   }
 });
 
@@ -48,50 +39,38 @@ async function syncWithMonday(orderNumber, companyName, dueDate) {
     "text9": companyName,         // companyName -> text9 컬럼
     "date": { "date": dueDate }   // dueDate -> date 컬럼
   };
-    // Monday.com API로 보내는 GraphQL 쿼리 작성
-  // 주문번호를 item_name으로 사용
-  // 아이템 생성 후 ID 반환
-    const query = `
-      mutation {
-        create_item(
-          board_id: 876363281,  
-          group_id: "new_group85406",  
-          item_name: "${orderNumber}",  
-          column_values: "${JSON.stringify(JSON.stringify(columnValues))}"
-          ){
-          id  
-        }
-      }
-    `;// JSON을 문자열로 처리
+  
+// 쿼리 문자열을 한 줄로 압축하고 이스케이프 처리
+  const columnValuesString = JSON.stringify(columnValues).replace(/"/g, '\\"');
+  const query = `mutation { create_item(board_id: 876363281, group_id: "new_group85406", item_name: "${orderNumber}", column_values: "${columnValuesString}") { id } }`;
 
-    // Monday.com API 호출
-  try{
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify({ query }),
-  });
-// *HTTP 상태 코드 검사 추가**
-  if (!response.ok) { //  변경된 부분: HTTP 오류 확인 로직
-  console.error(`HTTP 오류: ${response.status}`);
-  throw new Error(`HTTP 오류: ${response.status}`);
-}
+  console.log("전송할 쿼리:", query); // 디버깅용
+  
+// Monday.com API 호출
+try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({ query }),
+    });
 
-  const data = await response.json();
-    
-    //GraphQL 응답 검사 추가
-  if (data.errors) { //GraphQL 응답 오류 확인
-    console.error("GraphQL 오류:", data.errors);
-    throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
-  }
+    if (!response.ok) {
+      const errorText = await response.text(); // 오류 상세 정보 가져오기
+      throw new Error(`HTTP 오류: ${response.status} - ${errorText}`);
+    }
 
-    console.log("동기화 성공:", data); // 성공 로그 추가
-    return data;   
-  } catch(error){
-    console.error("동기화 중 오류 발생:",error); // 에러 처리 추가
-    throw error;//에러 재전달
+    const data = await response.json();
+    if (data.errors) {
+      throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
+    }
+
+    console.log("Monday.com 응답:", data);
+    return data;
+  } catch (error) {
+    console.error("동기화 중 오류 발생:", error);
+    throw error;
   }
 }
