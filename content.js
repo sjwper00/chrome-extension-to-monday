@@ -1,11 +1,23 @@
 /**
- * content.js - 얼마에요 4.0 ↔ Monday.com 연동 (개선판)
+ * content.js - 얼마에요 4.0 ↔ Monday.com 연동 (개선판 v2)
  *
  * 개선 사항:
  * 1. Content Script 재활성화 문제 해결
  *    - MutationObserver로 '판매주문서조회' 메뉴/탭 전환을 감지
  *    - 탭 전환 시 자동으로 리스너 재등록
  * 2. 품목 리스트 → Monday.com Subitem 자동 생성
+ *
+ * [Subitem 보드 컬럼 ID - "Subitems of Weekly Team Tasks" 기준]
+ * name      → Name        (품목명, item_name으로 자동 처리)
+ * numbers   → 수량
+ * text0     → Maker
+ * text8     → S/N
+ * text      → T/N (or C/N)
+ * text3     → VT번호
+ * long_text → 비고
+ * checkbox  → 확인
+ * person    → Owner
+ * files1    → Files
  */
 
 const API_URL = "https://api.monday.com/v2";
@@ -169,12 +181,27 @@ async function createSubitems(parentItemId, items) {
   }
 
   for (const item of items) {
-    const columnValues = {
-      // Subitem 보드의 수량 컬럼 ID에 맞게 수정 필요
-      // 예: "numbers" 타입 컬럼 ID가 "quantity"인 경우
-      "numbers": item.quantity,
+    // ──────────────────────────────────────────────────────
+    // Subitem 컬럼 값 설정
+    // "Subitems of Weekly Team Tasks" 보드 실제 컬럼 ID 기준
+    //
+    // ✅ 현재 채우는 컬럼:
+    //   "numbers"   → 수량 (얼마에요 주문서에서 추출)
+    //
+    // 📝 필요 시 아래 컬럼 추가 가능 (얼마에요 데이터와 매핑):
+    //   "text0"     → Maker
+    //   "text8"     → S/N
+    //   "text"      → T/N (or C/N)
+    //   "text3"     → VT번호
+    //   "long_text" → 비고
+    // ──────────────────────────────────────────────────────
+    const subColumnValues = {
+      "numbers": item.quantity,   // 수량 (id: numbers, type: numbers)
+      // "text0": item.maker,     // Maker - 얼마에요에서 해당 필드 추출 시 활성화
+      // "text8": item.serialNo,  // S/N  - 얼마에요에서 해당 필드 추출 시 활성화
     };
-    const columnValuesStr = JSON.stringify(columnValues).replace(/"/g, '\\"');
+
+    const columnValuesStr = JSON.stringify(subColumnValues).replace(/"/g, '\\"');
 
     const query = `mutation {
       create_subitem(
