@@ -113,28 +113,23 @@ function extractOrderData(container) {
 // ─────────────────────────────────────────────
 
 function extractMemo(container) {
-  // 방법 1: 라벨 텍스트 '메모' 기준으로 인접 input/textarea 탐색
-  const labels = container.querySelectorAll(".x-form-item-label-text");
-  for (const label of labels) {
-    if (label.textContent.trim() === "메모") {
-      const formItem = label.closest(".x-form-item");
-      if (formItem) {
-        const input = formItem.querySelector("input, textarea");
-        if (input?.value?.trim()) {
-          const val = input.value.trim();
-          console.log("[얼마↔Monday] 메모 추출 성공:", val);
-          return val;
-        }
-      }
-    }
+  // 방법 1: name="txt_ref2" 로 정확하게 탐색 (가장 안정적)
+  // 실제 DOM: <textarea name="txt_ref2" id="textarea-[숫자]-inputEl">
+  const memoEl = container.querySelector("textarea[name='txt_ref2']");
+  if (memoEl?.value?.trim()) {
+    const val = memoEl.value.trim();
+    console.log("[얼마↔Monday] 메모 추출 성공 (txt_ref2):", val);
+    return val;
   }
 
-  // 방법 2 (폴백): textareafield 첫 번째 항목
-  const textareas = container.querySelectorAll("[id^='textareafield-'][id$='-inputEl']");
-  if (textareas.length > 0 && textareas[0]?.value?.trim()) {
-    const val = textareas[0].value.trim();
-    console.log("[얼마↔Monday] 메모 폴백 추출:", val);
-    return val;
+  // 방법 2 (폴백): id 패턴 "textarea-[숫자]-inputEl"
+  const textareas = container.querySelectorAll("textarea[id^='textarea-'][id$='-inputEl']");
+  for (const ta of textareas) {
+    if (ta?.value?.trim()) {
+      const val = ta.value.trim();
+      console.log("[얼마↔Monday] 메모 폴백 추출 (textarea id):", val);
+      return val;
+    }
   }
 
   console.warn("[얼마↔Monday] 메모란을 찾지 못했습니다.");
@@ -161,7 +156,7 @@ async function findDriveFileByPONumber(poNumber, companyName) {
     console.warn("[Drive] 발주번호 없음 - 검색 생략");
     return null;
   }
-  if (GOOGLE_DRIVE_API_KEY === "AIzaSyAOwptybR4j9CPeXRaIt5D8cMtMLwO6vc8") {
+  if (GOOGLE_DRIVE_API_KEY === "여기에_Google_Drive_API_Key_입력") {
     console.warn("[Drive] API Key 미설정 - 검색 생략");
     return null;
   }
@@ -428,3 +423,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
