@@ -1,28 +1,32 @@
 /**
- * popup.js - 얼마에요 4.0 ↔ Monday.com 연동 (개선판)
+ * popup.js - 얼마에요 4.0 ↔ Monday.com 연동 (v3)
  *
- * 개선 사항:
- * 1. 동기화 전 추출 데이터 미리보기 표시
- * 2. 품목 리스트(items)도 함께 전송
- * 3. 상태 피드백 UI (로딩 / 성공 / 오류)
- * 4. [개선 1] content script 미응답 시 재주입 안내
+ * v3 변경:
+ *   - memo(발주번호) 수신 및 background로 전달
+ *   - 미리보기에 발주번호 + Drive 검색 여부 표시
  */
 
-const syncBtn  = document.getElementById("sync");
-const statusEl = document.getElementById("status");
+const syncBtn   = document.getElementById("sync");
+const statusEl  = document.getElementById("status");
 const previewEl = document.getElementById("preview");
 
 function setStatus(msg, type = "info") {
   statusEl.textContent = msg;
-  statusEl.className = `status ${type}`;
+  statusEl.className   = `status ${type}`;
 }
 
-function showPreview(orderData, items) {
+function showPreview(orderData, items, memo) {
   if (!previewEl) return;
+  const driveRow = memo
+    ? `<div class="preview-row"><span>발주번호(메모)</span><strong>${memo}</strong></div>
+       <div class="preview-drive">🔍 Drive에서 "${memo}" 파일 검색 예정</div>`
+    : `<div class="preview-drive preview-no-drive">⚠️ 메모란 비어있음 - Drive 검색 생략</div>`;
+
   previewEl.innerHTML = `
     <div class="preview-row"><span>주문번호</span><strong>${orderData.orderNumber}</strong></div>
     <div class="preview-row"><span>업체명</span><strong>${orderData.companyName}</strong></div>
     <div class="preview-row"><span>납기일</span><strong>${orderData.dueDate}</strong></div>
+    ${driveRow}
     <div class="preview-row"><span>품목 수</span><strong>${items.length}개</strong></div>
     ${items.map(i => `<div class="preview-item">• ${i.name} (수량: ${i.quantity})</div>`).join("")}
   `;
@@ -43,12 +47,10 @@ syncBtn.addEventListener("click", () => {
 
     const tabId = tabs[0].id;
 
-    // [개선 1] content script에 데이터 요청
     chrome.tabs.sendMessage(tabId, { type: "get_order_data" }, (response) => {
-      // content script 응답 없음 → 재주입 안내
       if (chrome.runtime.lastError || !response) {
         setStatus(
-          "⚠️ 판매주문서조회 탭을 열고 주문서를 선택한 뒤 다시 시도하세요.\n(페이지 새로고침 없이 탭 전환 시 발생)",
+          "⚠️ 판매주문서조회 탭을 열고 주문서를 선택한 뒤 다시 시도하세요.\n(탭 전환 후 재발생 시 페이지 새로고침)",
           "error"
         );
         syncBtn.disabled = false;
@@ -61,17 +63,17 @@ syncBtn.addEventListener("click", () => {
         return;
       }
 
-      const { data: orderData, items = [] } = response;
+      const { data: orderData, items = [], memo = null } = response;
 
-      // 미리보기 표시
-      showPreview(orderData, items);
+      // 미리보기 표시 (발주번호 포함)
+      showPreview(orderData, items, memo);
       setStatus("Monday.com에 전송 중...", "loading");
 
-      // background.js로 동기화 요청 (items 포함)
+      // background.js로 동기화 요청 (items + memo 포함)
       chrome.runtime.sendMessage(
         {
           type: "web_event",
-          data: { ...orderData, items },
+          data: { ...orderData, items, memo },
         },
         (bgResponse) => {
           if (chrome.runtime.lastError) {
