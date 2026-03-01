@@ -1,76 +1,191 @@
-const API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw"; // Monday.com API 엔드포인트
-const API_URL = "https://api.monday.com/v2"; // Monday.com API 키
+/**
+ * background.js - 얼마에요 4.0 ↔ Monday.com 연동 (개선판 v2)
+ *
+ * [Subitem 보드 컬럼 ID - "Subitems of Weekly Team Tasks" 기준]
+ * name      → Name        (품목명, item_name으로 자동 처리)
+ * numbers   → 수량
+ * text0     → Maker
+ * text8     → S/N
+ * text      → T/N (or C/N)
+ * text3     → VT번호
+ * long_text → 비고
+ * checkbox  → 확인
+ * person    → Owner
+ * files1    → Files
+ */
 
-// 메시지 수신 및 처리
+const API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw";
+const API_URL = "https://api.monday.com/v2";
+
+// ─────────────────────────────────────────────
+// [개선 1] 탭 전환 시 content script 재주입
+// SPA에서 URL 변경 없이 뷰만 바뀌는 경우 content.js가
+// 언로드될 수 있으므로, 탭 활성화 시 재주입 시도
+// ─────────────────────────────────────────────
+
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.url && tab.url.includes("ebook.iquest.co.kr")) {
+      await reinjectContentScript(tabId);
+    }
+  } catch (e) {
+    // 탭 정보 조회 실패 (닫힌 탭 등) - 무시
+  }
+});
+
+// 페이지 내 URL 변경(SPA 해시/히스토리 변경) 감지
+chrome.webNavigation?.onHistoryStateUpdated?.addListener(async (details) => {
+  if (details.url.includes("ebook.iquest.co.kr")) {
+    console.log("[얼마↔Monday] SPA 페이지 전환 감지 - content script 재주입");
+    await reinjectContentScript(details.tabId);
+  }
+});
+
+/**
+ * content.js 재주입 함수
+ * 이미 주입되어 있으면 ping으로 확인 후 생략, 응답 없으면 재주입
+ */
+async function reinjectContentScript(tabId) {
+  try {
+    // ping 메시지로 content script 활성 여부 확인
+    await chrome.tabs.sendMessage(tabId, { type: "ping" });
+    console.log("[얼마↔Monday] content script 이미 활성 상태");
+  } catch {
+    // 응답 없음 → 재주입
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content.js"],
+      });
+      console.log("[얼마↔Monday] content script 재주입 완료");
+    } catch (e) {
+      console.warn("[얼마↔Monday] content script 재주입 실패:", e.message);
+    }
+  }
+}
+
+
+// ─────────────────────────────────────────────
+// 메시지 수신: popup → background → Monday API
+// (content.js에서 직접 호출이 막히는 환경 대비 폴백)
+// ─────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "ping") {
+    sendResponse({ status: "pong" });
+    return;
+  }
+
   if (message.type === "web_event") {
-    console.log("동기화 시작 신호 수신:", message.data);
+    const { orderNumber, companyName, dueDate, items = [] } = message.data;
 
-    const { orderNumber, companyName, dueDate } = message.data;
-
-    // 데이터 유효성 검사
     if (!orderNumber || !companyName || !dueDate) {
-      console.error("유효하지 않은 데이터:", { orderNumber, companyName, dueDate });
       sendResponse({ status: "error", message: "유효하지 않은 데이터입니다." });
       return;
     }
 
-    // 동기화 작업 수행
-    syncWithMonday(orderNumber, companyName, dueDate)
-      .then((result) => {
-        console.log("동기화 성공:", result);
-        sendResponse({ status: "success", message: "동기화 완료", data: result });
-      })
-      .catch((error) => {
-        console.error("동기화 중 오류 발생:", error);
-        sendResponse({ status: "error", message: "동기화 실패", error });
-      });
+    syncWithMonday(orderNumber, companyName, dueDate, items)
+      .then((result) => sendResponse({ status: "success", message: "동기화 완료", data: result }))
+      .catch((error) => sendResponse({ status: "error", message: "동기화 실패", error: error.message }));
 
-    // 비동기 응답을 사용하기 위해 true 반환
-    return true;
+    return true; // 비동기 응답
   }
 });
 
-// 동기화 작업 함수
-async function syncWithMonday(orderNumber, companyName, dueDate) {
-  console.log("Monday.com 동기화 작업 실행 중...");
 
+// ─────────────────────────────────────────────
+// Monday.com API: 아이템 생성 + Subitem 생성
+// ─────────────────────────────────────────────
+
+async function syncWithMonday(orderNumber, companyName, dueDate, items = []) {
   const columnValues = {
-    "text9": companyName,         // companyName -> text9 컬럼
-    "date": { "date": dueDate }   // dueDate -> date 컬럼
+    "text9": companyName,
+    "date": { "date": dueDate },
   };
-  
-// 쿼리 문자열을 한 줄로 압축하고 이스케이프 처리
-  const columnValuesString = JSON.stringify(columnValues).replace(/"/g, '\\"');
-  const query = `mutation { create_item(board_id: 876363281, group_id: "new_group85406", item_name: "${orderNumber}", column_values: "${columnValuesString}") { id } }`;
+  const columnValuesStr = JSON.stringify(columnValues).replace(/"/g, '\\"');
 
-  console.log("전송할 쿼리:", query); // 디버깅용
-  
-// Monday.com API 호출
-try {
-    const response = await fetch(API_URL, {
+  const query = `mutation {
+    create_item(
+      board_id: 876363281,
+      group_id: "new_group85406",
+      item_name: "${orderNumber.replace(/"/g, '\\"')}",
+      column_values: "${columnValuesStr}"
+    ) { id }
+  }`;
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`,
+      "API-Version": "2024-01",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) throw new Error(`HTTP 오류: ${response.status}`);
+
+  const data = await response.json();
+  if (data.errors) throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
+
+  const newItemId = data?.data?.create_item?.id;
+
+  // Subitem 생성
+  if (newItemId && items.length > 0) {
+    await createSubitems(newItemId, items);
+  }
+
+  return data;
+}
+
+async function createSubitems(parentItemId, items) {
+  for (const item of items) {
+    // ──────────────────────────────────────────────────────
+    // Subitem 컬럼 값 설정
+    // "Subitems of Weekly Team Tasks" 보드 실제 컬럼 ID 기준
+    //
+    // ✅ 현재 채우는 컬럼:
+    //   "numbers"   → 수량 (얼마에요 주문서에서 추출)
+    //
+    // 📝 필요 시 아래 컬럼 추가 가능 (얼마에요 데이터와 매핑):
+    //   "text0"     → Maker
+    //   "text8"     → S/N
+    //   "text"      → T/N (or C/N)
+    //   "text3"     → VT번호
+    //   "long_text" → 비고
+    // ──────────────────────────────────────────────────────
+    const subColumnValues = {
+      "numbers": item.quantity,   // 수량 (id: numbers, type: numbers)
+      // "text0": item.maker,     // Maker - 얼마에요에서 해당 필드 추출 시 활성화
+      // "text8": item.serialNo,  // S/N  - 얼마에요에서 해당 필드 추출 시 활성화
+    };
+
+    const subColStr = JSON.stringify(subColumnValues).replace(/"/g, '\\"');
+
+    const query = `mutation {
+      create_subitem(
+        parent_item_id: ${parentItemId},
+        item_name: "${item.name.replace(/"/g, '\\"')}",
+        column_values: "${subColStr}"
+      ) { id name }
+    }`;
+
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
+        "Authorization": `Bearer ${API_KEY}`,
+        "API-Version": "2024-01",
       },
       body: JSON.stringify({ query }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text(); // 오류 상세 정보 가져오기
-      throw new Error(`HTTP 오류: ${response.status} - ${errorText}`);
+    const d = await res.json();
+    if (d.errors) {
+      console.error(`[Subitem 오류] ${item.name}:`, d.errors);
+    } else {
+      console.log(`[Subitem 성공] ${item.name}`);
     }
-
-    const data = await response.json();
-    if (data.errors) {
-      throw new Error(`GraphQL 오류: ${JSON.stringify(data.errors)}`);
-    }
-
-    console.log("Monday.com 응답:", data);
-    return data;
-  } catch (error) {
-    console.error("동기화 중 오류 발생:", error);
-    throw error;
   }
 }
