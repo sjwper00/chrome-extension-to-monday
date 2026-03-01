@@ -78,14 +78,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "web_event") {
-    const { orderNumber, companyName, dueDate, items = [] } = message.data;
+    const { orderNumber, companyName, dueDate, items = [], memo = null } = message.data;
 
     if (!orderNumber || !companyName || !dueDate) {
       sendResponse({ status: "error", message: "유효하지 않은 데이터입니다." });
       return;
     }
 
-    syncWithMonday(orderNumber, companyName, dueDate, items)
+    syncWithMonday(orderNumber, companyName, dueDate, items, memo)
       .then((result) => sendResponse({ status: "success", message: "동기화 완료", data: result }))
       .catch((error) => sendResponse({ status: "error", message: "동기화 실패", error: error.message }));
 
@@ -98,7 +98,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Monday.com API: 아이템 생성 + Subitem 생성
 // ─────────────────────────────────────────────
 
-async function syncWithMonday(orderNumber, companyName, dueDate, items = []) {
+async function syncWithMonday(orderNumber, companyName, dueDate, items = [], memo = null) {
   const columnValues = {
     "text9": companyName,
     "date": { "date": dueDate },
