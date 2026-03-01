@@ -1,25 +1,39 @@
 {
   "manifest_version": 3,
   "name": "얼마에요-Monday.com 연동",
-  "version": "1.0.0",
-  "description": "얼마에요 주문서를 감지하여 Monday.com Weekly Board에 자동으로 아이템 생성",
-  "permissions": ["activeTab", "scripting", "storage"], 
-  "host_permissions": ["https://*.monday.com/*", "https://ebook.iquest.co.kr/ehmMain.do/*"],
+  "version": "2.0.0",
+  "description": "얼마에요 4.0 판매주문서를 Monday.com Weekly Board에 자동 동기화 (품목 Subitem 포함)",
+
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "webNavigation"
+  ],
+
+  "host_permissions": [
+    "https://*.monday.com/*",
+    "https://ebook.iquest.co.kr/*"
+  ],
+
   "background": {
-    "service_worker": "background.js"},
+    "service_worker": "background.js"
+  },
+
   "content_scripts": [
     {
-      "matches": ["https://ebook.iquest.co.kr/ehmMain.do/*"], 
-      "js": ["content.js"]
+      "matches": ["https://ebook.iquest.co.kr/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
+
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "icons/icons8-synchronize-16.png",
-      "48": "icons/icons8-synchronize-48.png",
+      "16":  "icons/icons8-synchronize-16.png",
+      "48":  "icons/icons8-synchronize-48.png",
       "128": "icons/icons8-synchronize-128.png"
     }
   }
 }
-
