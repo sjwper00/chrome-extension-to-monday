@@ -14,8 +14,13 @@
  * files1    → Files
  */
 
-const API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw";
-const API_URL = "https://api.monday.com/v2";
+const API_KEY  = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw";
+const API_URL  = "https://api.monday.com/v2";
+const BOARD_ID = "876363281";
+
+// ⚠️ content.js와 동일하게 설정 필요
+const GOOGLE_DRIVE_API_KEY  = "AIzaSyAOwptybR4j9CPeXRaIt5D8cMtMLwO6vc8";
+const MONDAY_LINK_COLUMN_ID = "link_mm119pnk"; // title: "Link", type: "link" ✅
 
 // ─────────────────────────────────────────────
 // [개선 1] 탭 전환 시 content script 재주입
@@ -136,6 +141,17 @@ async function syncWithMonday(orderNumber, companyName, dueDate, items = [], mem
     await createSubitems(newItemId, items);
   }
 
+  // Drive 파일 검색 → Monday Link 컬럼 저장
+  if (newItemId && memo) {
+    console.log(`[Drive] 검색 시작 (발주번호: ${memo})`);
+    const driveFile = await findDriveFileByPONumber(memo, companyName);
+    if (driveFile) {
+      await attachDriveLinkToMonday(newItemId, driveFile);
+    } else {
+      console.warn(`[Drive] "${memo}" 관련 파일을 찾지 못했습니다.`);
+    }
+  }
+
   return data;
 }
 
@@ -187,5 +203,97 @@ async function createSubitems(parentItemId, items) {
     } else {
       console.log(`[Subitem 성공] ${item.name}`);
     }
+  }
+}
+
+
+// ─────────────────────────────────────────────
+// Google Drive 유사 파일 검색
+// ─────────────────────────────────────────────
+
+async function findDriveFileByPONumber(poNumber, companyName) {
+  if (!poNumber) return null;
+  if (GOOGLE_DRIVE_API_KEY === "여기에_Google_Drive_API_Key_입력") {
+    console.warn("[Drive] API Key 미설정 - 검색 생략");
+    return null;
+  }
+
+  try {
+    const q      = encodeURIComponent(`name contains '${poNumber}' and trashed = false`);
+    const fields = encodeURIComponent("files(id,name,webViewLink,modifiedTime)");
+    const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&key=${GOOGLE_DRIVE_API_KEY}`;
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Drive API HTTP ${response.status}`);
+
+    const data  = await response.json();
+    const files = data.files || [];
+    console.log(`[Drive] 검색 결과 ${files.length}개:`, files.map(f => f.name));
+    if (!files.length) return null;
+
+    // 유사도 점수 계산
+    const scored = files.map(file => {
+      const fname = file.name.toLowerCase();
+      const po    = poNumber.toLowerCase();
+      const co    = (companyName || "").toLowerCase();
+      let score   = 0;
+
+      if (fname.includes(po)) score += 100;
+
+      const exts = ["", ".pdf", ".xlsx", ".docx", ".jpg", ".png"];
+      if (exts.some(ext => fname.endsWith(po + ext))) score += 30;
+
+      if (co && fname.includes(co)) score += 20;
+      score += Math.max(0, 10 - Math.floor(fname.length / 10));
+
+      return { ...file, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    console.log(`[Drive] 최적 파일: "${best.name}" (점수: ${best.score})`);
+    return { name: best.name, url: best.webViewLink, score: best.score };
+
+  } catch (e) {
+    console.error("[Drive] 파일 검색 실패:", e);
+    return null;
+  }
+}
+
+
+// ─────────────────────────────────────────────
+// Monday.com Link 컬럼에 Drive URL 저장
+// ─────────────────────────────────────────────
+
+async function attachDriveLinkToMonday(itemId, driveFile) {
+  if (!driveFile?.url) return;
+
+  const linkValue = JSON.stringify({ url: driveFile.url, text: driveFile.name })
+                      .replace(/"/g, '\\"');
+
+  const query = `mutation {
+    change_column_value(
+      board_id: ${BOARD_ID},
+      item_id: ${itemId},
+      column_id: "${MONDAY_LINK_COLUMN_ID}",
+      value: "${linkValue}"
+    ) { id }
+  }`;
+
+  try {
+    const res  = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEY}`,
+        "API-Version": "2024-01",
+      },
+      body: JSON.stringify({ query }),
+    });
+    const d = await res.json();
+    if (d.errors) console.error("[얼마↔Monday] Link 저장 오류:", d.errors);
+    else          console.log(`[얼마↔Monday] Drive 링크 저장 성공: "${driveFile.name}"`);
+  } catch (e) {
+    console.error("[얼마↔Monday] Link 저장 요청 실패:", e);
   }
 }
