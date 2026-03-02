@@ -19,7 +19,7 @@ const API_URL  = "https://api.monday.com/v2";
 const BOARD_ID = "876363281";
 
 // ⚠️ content.js와 동일하게 설정 필요
-const GOOGLE_DRIVE_API_KEY  = "AIzaSyAOwptybR4j9CPeXRaIt5D8cMtMLwO6vc8";
+const GOOGLE_DRIVE_API_KEY  = "";
 const MONDAY_LINK_COLUMN_ID = "link_mm119pnk"; // title: "Link", type: "link" ✅
 
 // ─────────────────────────────────────────────
