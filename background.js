@@ -327,27 +327,30 @@ function processDriveResults(data, poNumber, companyName) {
 async function attachDriveLinkToMonday(itemId, driveFile) {
   if (!driveFile?.url) return;
 
-  const linkValue = JSON.stringify({ url: driveFile.url, text: driveFile.name })
-                      .replace(/"/g, '\\"');
-
-  const query = `mutation {
+  // ✅ variables 방식 → 이스케이프 문제 완전 해결
+  const query = `mutation changeLink($itemId: ID!, $value: String!) {
     change_column_value(
       board_id: ${BOARD_ID},
-      item_id: ${itemId},
+      item_id: $itemId,
       column_id: "${MONDAY_LINK_COLUMN_ID}",
-      value: "${linkValue}"
+      value: $value
     ) { id }
   }`;
 
+  const variables = {
+    itemId: String(itemId),
+    value: JSON.stringify({ url: driveFile.url, text: driveFile.name }),
+  };
+
   try {
-    const res  = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${API_KEY}`,
         "API-Version": "2024-01",
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, variables }),
     });
     const d = await res.json();
     if (d.errors) console.error("[얼마↔Monday] Link 저장 오류:", d.errors);
