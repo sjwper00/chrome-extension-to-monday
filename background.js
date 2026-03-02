@@ -14,13 +14,23 @@
  * files1    → Files
  */
 
-const API_KEY  = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjQ1MjQ4MjQzNiwiYWFpIjoxMSwidWlkIjoxNzM0NjE3NiwiaWFkIjoiMjAyNC0xMi0zMVQxMzoxNzozMy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzYyMDg5OCwicmduIjoidXNlMSJ9.ErHY3OjBbsfl6RZQXxe5j02lVnwInaXUMIoOECH1RQw";
-const API_URL  = "https://api.monday.com/v2";
-const BOARD_ID = "876363281";
+const API_URL               = "https://api.monday.com/v2";
+const BOARD_ID              = "876363281";
+const MONDAY_LINK_COLUMN_ID = "link_mm119pnk";
 
-// ⚠️ content.js와 동일하게 설정 필요
-const GOOGLE_DRIVE_API_KEY  = "";
-const MONDAY_LINK_COLUMN_ID = "link_mm119pnk"; // title: "Link", type: "link" ✅
+// 🔐 API 키는 chrome.storage에서 읽어옵니다.
+let API_KEY              = null;
+let GOOGLE_DRIVE_API_KEY = null;
+
+async function loadKeys() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["mondayApiKey", "driveApiKey"], (result) => {
+      API_KEY              = result.mondayApiKey || null;
+      GOOGLE_DRIVE_API_KEY = result.driveApiKey  || null;
+      resolve();
+    });
+  });
+}
 
 // ─────────────────────────────────────────────
 // [개선 1] 탭 전환 시 content script 재주입
@@ -83,14 +93,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "web_event") {
-    const { orderNumber, companyName, dueDate, items = [], memo = null } = message.data;
+    const { orderNumber, companyName, dueDate, items = [], memo = null, driveApiKey = null } = message.data;
 
     if (!orderNumber || !companyName || !dueDate) {
       sendResponse({ status: "error", message: "유효하지 않은 데이터입니다." });
       return;
     }
 
-    syncWithMonday(orderNumber, companyName, dueDate, items, memo)
+    syncWithMonday(orderNumber, companyName, dueDate, items, memo, driveApiKey)
       .then((result) => sendResponse({ status: "success", message: "동기화 완료", data: result }))
       .catch((error) => sendResponse({ status: "error", message: "동기화 실패", error: error.message }));
 
@@ -103,7 +113,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Monday.com API: 아이템 생성 + Subitem 생성
 // ─────────────────────────────────────────────
 
-async function syncWithMonday(orderNumber, companyName, dueDate, items = [], memo = null) {
+async function syncWithMonday(orderNumber, companyName, dueDate, items = [], memo = null, driveApiKey = null) {
+  await loadKeys(); // 🔐 storage에서 키 로드
+  if (!API_KEY) throw new Error("Monday API Key가 설정되지 않았습니다. 확장 프로그램 설정을 확인하세요.");
+
   const columnValues = {
     "text9": companyName,
     "date": { "date": dueDate },
@@ -144,7 +157,7 @@ async function syncWithMonday(orderNumber, companyName, dueDate, items = [], mem
   // Drive 파일 검색 → Monday Link 컬럼 저장
   if (newItemId && memo) {
     console.log(`[Drive] 검색 시작 (발주번호: ${memo})`);
-    const driveFile = await findDriveFileByPONumber(memo, companyName);
+    const driveFile = await findDriveFileByPONumber(memo, companyName, driveApiKey);
     if (driveFile) {
       await attachDriveLinkToMonday(newItemId, driveFile);
     } else {
@@ -211,53 +224,99 @@ async function createSubitems(parentItemId, items) {
 // Google Drive 유사 파일 검색
 // ─────────────────────────────────────────────
 
-async function findDriveFileByPONumber(poNumber, companyName) {
+// ─────────────────────────────────────────────
+// OAuth 토큰 획득 (chrome.identity 사용)
+// ─────────────────────────────────────────────
+
+async function getOAuthToken() {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive: true }, (token) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(token);
+      }
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// Google Drive 유사 파일 검색 (OAuth 버전)
+// 공유 드라이브 포함 검색
+// ─────────────────────────────────────────────
+
+async function findDriveFileByPONumber(poNumber, companyName, driveApiKey = null) {
   if (!poNumber) return null;
-  if (GOOGLE_DRIVE_API_KEY === "여기에_Google_Drive_API_Key_입력") {
-    console.warn("[Drive] API Key 미설정 - 검색 생략");
-    return null;
-  }
 
   try {
+    // OAuth 토큰 획득 (API Key 대신 사용)
+    console.log("[Drive] OAuth 토큰 요청 중...");
+    const token = await getOAuthToken();
+    console.log("[Drive] OAuth 토큰 획득 성공");
+
+    // 공유 드라이브 포함 검색 파라미터
     const q      = encodeURIComponent(`name contains '${poNumber}' and trashed = false`);
     const fields = encodeURIComponent("files(id,name,webViewLink,modifiedTime)");
-    const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&key=${GOOGLE_DRIVE_API_KEY}`;
+    const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives`;
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Drive API HTTP ${response.status}`);
-
-    const data  = await response.json();
-    const files = data.files || [];
-    console.log(`[Drive] 검색 결과 ${files.length}개:`, files.map(f => f.name));
-    if (!files.length) return null;
-
-    // 유사도 점수 계산
-    const scored = files.map(file => {
-      const fname = file.name.toLowerCase();
-      const po    = poNumber.toLowerCase();
-      const co    = (companyName || "").toLowerCase();
-      let score   = 0;
-
-      if (fname.includes(po)) score += 100;
-
-      const exts = ["", ".pdf", ".xlsx", ".docx", ".jpg", ".png"];
-      if (exts.some(ext => fname.endsWith(po + ext))) score += 30;
-
-      if (co && fname.includes(co)) score += 20;
-      score += Math.max(0, 10 - Math.floor(fname.length / 10));
-
-      return { ...file, score };
+    const response = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      }
     });
 
-    scored.sort((a, b) => b.score - a.score);
-    const best = scored[0];
-    console.log(`[Drive] 최적 파일: "${best.name}" (점수: ${best.score})`);
-    return { name: best.name, url: best.webViewLink, score: best.score };
+    if (!response.ok) {
+      // 토큰 만료 시 캐시 제거 후 재시도
+      if (response.status === 401) {
+        console.warn("[Drive] 토큰 만료 - 갱신 후 재시도");
+        await new Promise((resolve) => {
+          chrome.identity.removeCachedAuthToken({ token }, resolve);
+        });
+        const newToken = await getOAuthToken();
+        const retryRes = await fetch(url, {
+          headers: { "Authorization": `Bearer ${newToken}` }
+        });
+        if (!retryRes.ok) throw new Error(`Drive API HTTP ${retryRes.status}`);
+        return await processDriveResults(await retryRes.json(), poNumber, companyName);
+      }
+      throw new Error(`Drive API HTTP ${response.status}`);
+    }
+
+    return await processDriveResults(await response.json(), poNumber, companyName);
 
   } catch (e) {
-    console.error("[Drive] 파일 검색 실패:", e);
+    console.error("[Drive] 파일 검색 실패:", e.message);
     return null;
   }
+}
+
+// 검색 결과에서 유사도 기반 최적 파일 선택
+function processDriveResults(data, poNumber, companyName) {
+  const files = data.files || [];
+  console.log(`[Drive] 검색 결과 ${files.length}개:`, files.map(f => f.name));
+  if (!files.length) return null;
+
+  const scored = files.map(file => {
+    const fname = file.name.toLowerCase();
+    const po    = poNumber.toLowerCase();
+    const co    = (companyName || "").toLowerCase();
+    let score   = 0;
+
+    if (fname.includes(po)) score += 100;
+
+    const exts = ["", ".pdf", ".xlsx", ".docx", ".jpg", ".png"];
+    if (exts.some(ext => fname.endsWith(po + ext))) score += 30;
+
+    if (co && fname.includes(co)) score += 20;
+    score += Math.max(0, 10 - Math.floor(fname.length / 10));
+
+    return { ...file, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  console.log(`[Drive] 최적 파일: "${best.name}" (점수: ${best.score})`);
+  return { name: best.name, url: best.webViewLink, score: best.score };
 }
 
 

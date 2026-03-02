@@ -1,14 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="styles.css">
-  <title>Web to Monday.com</title>
+  <title>얼마에요 → Monday.com</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      width: 300px;
+      background: #0f0f1a;
+      color: #e8e8f0;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .logo {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: linear-gradient(135deg, #ff6b6b, #f7971e);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .title    { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+    .subtitle { font-size: 10px; color: #6b6b8a; margin-top: 1px; }
+
+    /* 탭 */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 6px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a45;
+      border-radius: 6px;
+      color: #6b6b8a;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: #2a2a45;
+      border-color: #667eea;
+      color: #fff;
+    }
+
+    /* 동기화 탭 */
+    #tab-sync { display: block; }
+    #tab-settings { display: none; }
+
+    /* 버튼 */
+    #sync {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none; border-radius: 8px;
+      color: #fff;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.5px;
+    }
+    #sync:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    #sync:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 상태 */
+    .status {
+      margin-top: 12px; font-size: 11px; line-height: 1.5;
+      padding: 8px 10px; border-radius: 6px;
+      display: none; white-space: pre-wrap;
+    }
+    .status.info    { display: block; background: #1e2035; color: #8888bb; }
+    .status.loading { display: block; background: #1a1a2e; color: #9999ff; }
+    .status.success { display: block; background: #0d2818; color: #4ade80; }
+    .status.error   { display: block; background: #2a0d0d; color: #f87171; }
+
+    /* 미리보기 */
+    #preview {
+      display: none; margin-top: 12px;
+      background: #16162a; border-radius: 8px;
+      padding: 10px; font-size: 11px;
+    }
+    .preview-row {
+      display: flex; justify-content: space-between;
+      padding: 3px 0; border-bottom: 1px solid #1e1e35;
+    }
+    .preview-row span   { color: #6b6b8a; }
+    .preview-row strong { color: #c8c8e8; font-weight: 600; }
+    .preview-item  { color: #9999cc; padding: 2px 0 0 4px; font-size: 10px; }
+    .preview-drive { color: #6bd4a8; font-size: 10px; padding: 4px 0 2px 0; border-bottom: 1px solid #1e1e35; }
+    .preview-no-drive { color: #888855; }
+
+    /* 설정 탭 */
+    .setting-group { margin-bottom: 14px; }
+    .setting-label {
+      font-size: 10px; color: #6b6b8a;
+      margin-bottom: 5px; letter-spacing: 0.3px;
+    }
+    .setting-label span { color: #f87171; margin-left: 4px; font-size: 9px; }
+    .setting-input {
+      width: 100%;
+      background: #16162a; border: 1px solid #2a2a45;
+      border-radius: 6px; padding: 8px 10px;
+      color: #e8e8f0;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px;
+      transition: border-color 0.15s;
+    }
+    .setting-input:focus { outline: none; border-color: #667eea; }
+    .setting-input::placeholder { color: #3a3a55; }
+
+    .key-row { display: flex; gap: 6px; }
+    .key-row .setting-input { flex: 1; }
+    .toggle-btn {
+      padding: 0 8px;
+      background: #1a1a2e; border: 1px solid #2a2a45;
+      border-radius: 6px; color: #6b6b8a;
+      font-size: 12px; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .toggle-btn:hover { border-color: #667eea; }
+
+    #save-settings {
+      width: 100%;
+      padding: 9px;
+      background: #1a3a2a;
+      border: 1px solid #2a5a3a;
+      border-radius: 8px;
+      color: #4ade80;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    #save-settings:hover { background: #1f4a30; }
+
+    .setting-status {
+      margin-top: 8px; font-size: 10px;
+      text-align: center; display: none;
+    }
+    .setting-status.ok  { display: block; color: #4ade80; }
+    .setting-status.err { display: block; color: #f87171; }
+
+    .key-indicator {
+      font-size: 9px; margin-top: 3px;
+    }
+    .key-indicator.set   { color: #4ade80; }
+    .key-indicator.unset { color: #f87171; }
+  </style>
 </head>
 <body>
-  <h1>Sync to Monday.com</h1>
-  <button id="sync">Start Sync</button>
+  <div class="header">
+    <div class="logo">🔄</div>
+    <div>
+      <div class="title">얼마에요 → Monday.com</div>
+      <div class="subtitle">판매주문서 동기화</div>
+    </div>
+  </div>
+
+  <!-- 탭 전환 -->
+  <div class="tabs">
+    <button class="tab-btn active" id="btn-sync">🔄 동기화</button>
+    <button class="tab-btn" id="btn-settings">⚙️ 설정</button>
+  </div>
+
+  <!-- 동기화 탭 -->
+  <div id="tab-sync">
+    <button id="sync">Start Sync</button>
+    <div id="status" class="status"></div>
+    <div id="preview"></div>
+  </div>
+
+  <!-- 설정 탭 -->
+  <div id="tab-settings">
+
+    <div class="setting-group">
+      <div class="setting-label" style="color:#4ade80">
+        ✅ Google Drive 연동
+      </div>
+      <div style="font-size:10px; color:#6b6b8a; line-height:1.6; background:#0d2818; padding:8px 10px; border-radius:6px;">
+        OAuth 2.0 인증 방식으로 연동됩니다.<br>
+        Start Sync 첫 실행 시 Google 로그인 창이 뜨면<br>
+        계정을 선택하고 허용해 주세요.
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">Monday.com API Key</div>
+      <div class="key-row">
+        <input type="password" id="input-monday-key"
+               class="setting-input"
+               placeholder="Monday.com API Token">
+        <button class="toggle-btn" id="toggle-monday-key">👁</button>
+      </div>
+      <div class="key-indicator unset" id="indicator-monday-key">⚠ 미설정 (코드 기본값 사용 중)</div>
+    </div>
+
+    <button id="save-settings">저장</button>
+    <div class="setting-status" id="setting-status"></div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
