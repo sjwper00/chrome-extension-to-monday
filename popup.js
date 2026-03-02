@@ -30,11 +30,6 @@ document.getElementById("btn-settings").addEventListener("click", () => {
 // 설정 탭: Key 표시/숨김 토글
 // ─────────────────────────────────────────────
 
-document.getElementById("toggle-drive-key").addEventListener("click", () => {
-  const input = document.getElementById("input-drive-key");
-  input.type  = input.type === "password" ? "text" : "password";
-});
-
 document.getElementById("toggle-monday-key").addEventListener("click", () => {
   const input = document.getElementById("input-monday-key");
   input.type  = input.type === "password" ? "text" : "password";
@@ -56,19 +51,12 @@ function updateIndicator(id, isSet, label) {
   }
 }
 
-chrome.storage.local.get(["driveApiKey", "mondayApiKey"], (result) => {
-  if (result.driveApiKey) {
-    document.getElementById("input-drive-key").value = result.driveApiKey;
-    updateIndicator("indicator-drive-key", true);
-  } else {
-    updateIndicator("indicator-drive-key", false, "⚠ 미설정");
-  }
-
+chrome.storage.local.get(["mondayApiKey"], (result) => {
   if (result.mondayApiKey) {
     document.getElementById("input-monday-key").value = result.mondayApiKey;
     updateIndicator("indicator-monday-key", true);
   } else {
-    updateIndicator("indicator-monday-key", false, "⚠ 미설정 (코드 기본값 사용 중)");
+    updateIndicator("indicator-monday-key", false, "⚠ 미설정");
   }
 });
 
@@ -78,22 +66,19 @@ chrome.storage.local.get(["driveApiKey", "mondayApiKey"], (result) => {
 // ─────────────────────────────────────────────
 
 document.getElementById("save-settings").addEventListener("click", () => {
-  const driveKey  = document.getElementById("input-drive-key").value.trim();
   const mondayKey = document.getElementById("input-monday-key").value.trim();
   const statusEl  = document.getElementById("setting-status");
 
-  if (!driveKey) {
-    statusEl.textContent = "❌ Google Drive API Key를 입력해 주세요.";
+  if (!mondayKey) {
+    statusEl.textContent = "❌ Monday.com API Key를 입력해 주세요.";
     statusEl.className   = "setting-status err";
     return;
   }
 
-  chrome.storage.local.set({ driveApiKey: driveKey, mondayApiKey: mondayKey || null }, () => {
-    statusEl.textContent = "✅ 저장 완료! 동기화 탭에서 사용할 수 있습니다.";
+  chrome.storage.local.set({ mondayApiKey: mondayKey }, () => {
+    statusEl.textContent = "✅ 저장 완료!";
     statusEl.className   = "setting-status ok";
-    updateIndicator("indicator-drive-key", true);
-    if (mondayKey) updateIndicator("indicator-monday-key", true);
-
+    updateIndicator("indicator-monday-key", true);
     setTimeout(() => { statusEl.style.display = "none"; }, 3000);
   });
 });
